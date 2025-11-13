@@ -1,0 +1,88 @@
+# metrics-monitor-system (Release Note)
+
+## Giới thiệu
+
+metrics-monitor-system là một giải pháp giám sát metrics cho thiết bị IoT, hỗ trợ hệ điều hành Debian/Ubuntu trên kiến trúc arm64. Hệ thống hỗ trợ build native trên arm64 hoặc cross-compile từ x86_64, đồng thời cung cấp khả năng vận hành từ xa cũng như cập nhật OTA (Over-The-Air) giúp tối ưu quá trình quản lý & nâng cấp thiết bị.
+
+## Yêu cầu
+
+- Hệ thống Debian/Ubuntu, có thể build native hoặc cross-compile.
+- Build dependencies: `debhelper`, `fakeroot`, `cmake`, `g++`, `git`, `build-essential`
+- Các dependencies có thể cài đặt bằng script `build_deb.sh` hoặc thủ công.
+- Hỗ trợ OTA: Yêu cầu thiết bị có kết nối Internet và mở port OTA server (cấu hình cụ thể trong `config.json`).
+
+## Cách build package
+
+### Build Native trên arm64
+```bash
+sudo ./build_deb.sh
+```
+
+### Cross-compile từ x86_64
+```bash
+sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+dpkg-buildpackage -b -us -uc -aarm64
+```
+
+## Cấu trúc package
+
+- `/opt/cvedix/monitor/metrics_monitor_system`: File binary thực thi
+- `/opt/cvedix/monitor/config.json.example`: File config mẫu
+- `/opt/cvedix/monitor/device_config.example.json`: File config thiết bị mẫu
+- `/usr/bin/metrics_monitor_system`: Symlink tới binary
+- `/usr/share/doc/metrics-monitor-system/README.md`: Tài liệu hướng dẫn
+
+## Cài đặt
+
+Trên máy đích (arm64):
+```bash
+scp metrics-monitor-system_*.deb user@target:/tmp/
+sudo dpkg -i /tmp/metrics-monitor-system_*.deb
+sudo apt-get install -f
+sudo cp /opt/cvedix/monitor/config.json.example /opt/cvedix/monitor/config.json
+sudo nano /opt/cvedix/monitor/config.json
+metrics_monitor_system
+```
+
+## Vận hành thiết bị từ xa
+
+- Hệ thống hỗ trợ điều khiển, giám sát thiết bị từ xa qua API HTTP (REST).
+- Cho phép nhận, cập nhật config mới hoặc push OTA firmware/binary (cấu hình endpoint OTA trong config).
+- Ví dụ kiểm tra tình trạng:
+```bash
+curl http://localhost:8080/health
+curl http://localhost:8080/v1/core/system/info
+```
+- Với OTA, hệ thống tự động kiểm tra và lấy bản cập nhật mới từ server OTA định kỳ hoặc theo yêu cầu.
+
+## Cấu hình sau khi cài đặt
+
+1. Tạo file config:
+    ```bash
+    sudo cp /opt/cvedix/monitor/config.json.example /opt/cvedix/monitor/config.json
+    sudo nano /opt/cvedix/monitor/config.json
+    ```
+
+2. Khởi động service:
+    ```bash
+    metrics_monitor_system
+    ```
+
+3. Kiểm tra service và trạng thái OTA:
+    ```bash
+    curl http://localhost:8080/health
+    curl http://localhost:8080/ota/update/status
+    ```
+
+## Gỡ cài đặt
+
+```bash
+sudo apt-get remove metrics-monitor-system
+sudo apt-get purge metrics-monitor-system 
+```
+
+## Troubleshooting
+
+- Đảm bảo đã cài đủ dependencies và đúng kiến trúc arm64 trước khi cài đặt.
+- Kiểm tra file config và quyền truy cập.
+- Kiểm tra endpoint OTA nếu sử dụng tính năng update từ xa.
